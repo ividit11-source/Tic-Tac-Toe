@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Tic Tac Toe Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .game-cell {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .game-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .game-cell.filled {
+            transform: scale(0.95);
+        }
+
+        .popup-overlay {
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .popup-content {
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mode-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .mode-card.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .game-board {
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        .cell-x {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+
+        .cell-o {
+            color: #3498db;
+            font-weight: 700;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .winning-cell {
+            animation: pulse 0.6s ease-in-out;
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e) !important;
+        }
+
+        .status-indicator {
+            transition: all 0.3s ease;
+        }
+
+        .current-player {
+            transform: scale(1.1);
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+            .game-cell {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white text-black min-h-screen">
+    <!-- Mode Selection Screen -->
+    <div id="modeSelection" class="fixed inset-0 bg-white z-50 flex items-center justify-center p-4">
+        <div class="max-w-4xl w-full">
+            <div class="text-center mb-12">
+                <h1 class="text-5xl md:text-6xl font-bold text-gray-800 mb-4">🎮 Tic Tac Toe</h1>
+                <p class="text-xl text-gray-600">Choose Your Game Mode</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+                <!-- VS Computer Mode -->
+                <div class="mode-card bg-white p-8 rounded-2xl shadow-lg border-2 border-gray-200" onclick="selectMode('computer')">
+                    <div class="text-center">
+                        <div class="text-6xl mb-4">🤖</div>
+                        <h3 class="text-2xl font-semibold mb-2">VS Computer</h3>
+                        <p class="text-gray-600">Play against AI</p>
+                    </div>
+                </div>
+                
+                <!-- Manual/Player vs Player Mode -->
+                <div class="mode-card bg-white p-8 rounded-2xl shadow-lg border-2 border-gray-200" onclick="selectMode('manual')">
+                    <div class="text-center">
+                        <div class="text-6xl mb-4">👥</div>
+                        <h3 class="text-2xl font-semibold mb-2">VS Player</h3>
+                        <p class="text-gray-600">Play with friends</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="hidden min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow-sm p-4 border-b border-gray-200">
+            <div class="max-w-4xl mx-auto flex justify-between items-center">
+                <button onclick="showModeSelection()" class="flex items-center text-gray-600 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Modes
+                </button>
+                <h1 class="text-2xl font-bold text-gray-800">Tic Tac Toe</h1>
+                <div class="flex items-center space-x-4">
+                    <span id="modeDisplay" class="text-sm text-gray-600"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Game Content -->
+        <main class="flex-1 flex items-center justify-center p-4">
+            <div class="max-w-lg w-full">
+                <!-- Game Status -->
+                <div class="text-center mb-8">
+                    <div class="flex justify-center items-center space-x-8 mb-4">
+                        <div class="status-indicator" id="playerXStatus">
+                            <div class="text-2xl mb-1">❌</div>
+                            <div class="text-sm font-medium">Player X</div>
+                        </div>
+                        <div class="text-gray-400 text-lg">VS</div>
+                        <div class="status-indicator" id="playerOStatus">
+                            <div class="text-2xl mb-1">⭕</div>
+                            <div class="text-sm font-medium" id="playerOLabel">Player O</div>
+                        </div>
+                    </div>
+                    <p id="gameStatus" class="text-lg font-medium text-gray-700">Player X's turn</p>
+                </div>
+
+                <!-- Game Board -->
+                <div class="game-board p-6 mb-6">
+                    <div class="grid grid-cols-3 gap-3" id="gameBoard">
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="0"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="1"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="2"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="3"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="4"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="5"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="6"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="7"></div>
+                        <div class="game-cell bg-white h-20 md:h-24 flex items-center justify-center text-4xl font-bold rounded-xl border-2 border-gray-300 cursor-pointer" data-index="8"></div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="text-center">
+                    <button onclick="resetGame()" class="bg-gray-800 text-white px-8 py-3 rounded-xl font-medium hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-redo mr-2"></i>
+                        New Game
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Game Over Popup -->
+    <div id="gameOverPopup" class="fixed inset-0 popup-overlay bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="popup-content bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
+            <div class="mb-6">
+                <div id="popupIcon" class="text-6xl mb-4"></div>
+                <h2 id="popupTitle" class="text-3xl font-bold text-gray-800 mb-2"></h2>
+                <p id="popupMessage" class="text-gray-600 text-lg"></p>
+            </div>
+            <div class="space-y-3">
+                <button onclick="resetGame()" class="w-full bg-gray-800 text-white py-3 rounded-xl font-medium hover:bg-gray-700 transition-colors">
+                    Play Again
+                </button>
+                <button onclick="showModeSelection()" class="w-full bg-gray-200 text-gray-800 py-3 rounded-xl font-medium hover:bg-gray-300 transition-colors">
+                    Change Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TicTacToe {
+            constructor() {
+                this.board = Array(9).fill('');
+                this.currentPlayer = 'X';
+                this.gameMode = '';
+                this.gameActive = true;
+                this.winningCombos = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                    [0, 4, 8], [2, 4, 6] // diagonals
+                ];
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                const cells = document.querySelectorAll('.game-cell');
+                cells.forEach(cell => {
+                    cell.addEventListener('click', (e) => this.handleCellClick(e));
+                });
+            }
+
+            handleCellClick(event) {
+                const cellIndex = parseInt(event.target.dataset.index);
+                
+                if (!this.gameActive || this.board[cellIndex] !== '') {
+                    return;
+                }
+
+                this.makeMove(cellIndex, this.currentPlayer);
+
+                if (this.gameMode === 'computer' && this.currentPlayer === 'O' && this.gameActive) {
+                    setTimeout(() => this.computerMove(), 500);
+                }
+            }
+
+            makeMove(index, player) {
+                this.board[index] = player;
+                const cell = document.querySelector(`[data-index="${index}"]`);
+                
+                if (player === 'X') {
+                    cell.textContent = '❌';
+                    cell.classList.add('cell-x');
+                } else {
+                    cell.textContent = '⭕';
+                    cell.classList.add('cell-o');
+                }
+                
+                cell.classList.add('filled');
+
+                if (this.checkWin()) {
+                    this.endGame(player);
+                } else if (this.board.every(cell => cell !== '')) {
+                    this.endGame('draw');
+                } else {
+                    this.switchPlayer();
+                }
+            }
+
+            computerMove() {
+                if (!this.gameActive) return;
+
+                // Simple AI: Try to win, block player, or take center/corner
+                let moveIndex = this.getBestMove();
+                this.makeMove(moveIndex, 'O');
+            }
+
+            getBestMove() {
+                // Try to win
+                for (let i = 0; i < 9; i++) {
+                    if (this.board[i] === '') {
+                        this.board[i] = 'O';
+                        if (this.checkWin()) {
+                            this.board[i] = '';
+                            return i;
+                        }
+                        this.board[i] = '';
+                    }
+                }
+
+                // Try to block player
+                for (let i = 0; i < 9; i++) {
+                    if (this.board[i] === '') {
+                        this.board[i] = 'X';
+                        if (this.checkWin()) {
+                            this.board[i] = '';
+                            return i;
+                        }
+                        this.board[i] = '';
+                    }
+                }
+
+                // Take center if available
+                if (this.board[4] === '') return 4;
+
+                // Take corners
+                const corners = [0, 2, 6, 8];
+                const availableCorners = corners.filter(i => this.board[i] === '');
+                if (availableCorners.length > 0) {
+                    return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+                }
+
+                // Take any available spot
+                const availableSpots = this.board.map((spot, index) => spot === '' ? index : null).filter(val => val !== null);
+                return availableSpots[Math.floor(Math.random() * availableSpots.length)];
+            }
+
+            checkWin() {
+                return this.winningCombos.some(combo => {
+                    const [a, b, c] = combo;
+                    if (this.board[a] && this.board[a] === this.board[b] && this.board[a] === this.board[c]) {
+                        this.highlightWinningCells(combo);
+                        return true;
+                    }
+                    return false;
+                });
+            }
+
+            highlightWinningCells(combo) {
+                combo.forEach(index => {
+                    const cell = document.querySelector(`[data-index="${index}"]`);
+                    cell.classList.add('winning-cell');
+                });
+            }
+
+            switchPlayer() {
+                this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+                this.updateGameStatus();
+            }
+
+            updateGameStatus() {
+                const status = document.getElementById('gameStatus');
+                const playerXStatus = document.getElementById('playerXStatus');
+                const playerOStatus = document.getElementById('playerOStatus');
+                
+                // Remove current player class from both
+                playerXStatus.classList.remove('current-player');
+                playerOStatus.classList.remove('current-player');
+                
+                if (this.currentPlayer === 'X') {
+                    status.textContent = "Player X's turn";
+                    playerXStatus.classList.add('current-player');
+                } else {
+                    const isComputer = this.gameMode === 'computer';
+                    status.textContent = isComputer ? "Computer's turn" : "Player O's turn";
+                    playerOStatus.classList.add('current-player');
+                }
+            }
+
+            endGame(winner) {
+                this.gameActive = false;
+                setTimeout(() => {
+                    this.showGameOverPopup(winner);
+                }, 800);
+            }
+
+            showGameOverPopup(winner) {
+                const popup = document.getElementById('gameOverPopup');
+                const icon = document.getElementById('popupIcon');
+                const title = document.getElementById('popupTitle');
+                const message = document.getElementById('popupMessage');
+
+                if (winner === 'draw') {
+                    icon.textContent = '🤝';
+                    title.textContent = "It's a Draw!";
+                    message.textContent = "Great game! Nobody wins this time.";
+                } else if (winner === 'X') {
+                    icon.textContent = '🏆';
+                    title.textContent = 'Player X Wins!';
+                    message.textContent = 'Congratulations! You played excellently.';
+                } else {
+                    icon.textContent = this.gameMode === 'computer' ? '🤖' : '🏆';
+                    title.textContent = this.gameMode === 'computer' ? 'Computer Wins!' : 'Player O Wins!';
+                    message.textContent = this.gameMode === 'computer' ? 'Better luck next time!' : 'Congratulations! You played excellently.';
+                }
+
+                popup.classList.remove('hidden');
+                popup.classList.add('flex');
+            }
+
+            resetGame() {
+                this.board = Array(9).fill('');
+                this.currentPlayer = 'X';
+                this.gameActive = true;
+
+                // Clear board
+                const cells = document.querySelectorAll('.game-cell');
+                cells.forEach(cell => {
+                    cell.textContent = '';
+                    cell.classList.remove('cell-x', 'cell-o', 'filled', 'winning-cell');
+                });
+
+                // Hide popup
+                const popup = document.getElementById('gameOverPopup');
+                popup.classList.add('hidden');
+                popup.classList.remove('flex');
+
+                this.updateGameStatus();
+            }
+        }
+
+        let game = new TicTacToe();
+
+        function selectMode(mode) {
+            game.gameMode = mode;
+            
+            // Update mode display
+            const modeDisplay = document.getElementById('modeDisplay');
+            const playerOLabel = document.getElementById('playerOLabel');
+            
+            if (mode === 'computer') {
+                modeDisplay.textContent = '🤖 VS Computer';
+                playerOLabel.textContent = 'Computer';
+            } else {
+                modeDisplay.textContent = '👥 VS Player';
+                playerOLabel.textContent = 'Player O';
+            }
+
+            // Hide mode selection and show game
+            document.getElementById('modeSelection').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            
+            game.resetGame();
+        }
+
+        function showModeSelection() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('modeSelection').classList.remove('hidden');
+            
+            // Hide popup if open
+            const popup = document.getElementById('gameOverPopup');
+            popup.classList.add('hidden');
+            popup.classList.remove('flex');
+        }
+
+        function resetGame() {
+            game.resetGame();
+        }
+
+        // Add hover effects for mode cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const modeCards = document.querySelectorAll('.mode-card');
+            modeCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
